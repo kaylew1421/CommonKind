@@ -1,0 +1,8 @@
+{
+  "name": "Help Hub Map",
+  "description": "A community-powered map that shows nearby 'Help Hubs' (restaurants, grocers, churches) offering free/discounted meals or essentials during crises, funded by local donations.",
+  "requestFramePermissions": [
+    "geolocation",
+    "camera"
+  ]
+}

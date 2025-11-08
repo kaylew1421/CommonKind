@@ -1,0 +1,48 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CommonKind Map</title>
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=2" />
+  <meta name="theme-color" content="#14b8a6" />
+
+  <!-- ✅ Leaflet CSS (put anywhere in <head>; this is a good spot) -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
+<style>
+  /* Let the app and map use full height */
+  html, body, #root { height: 100%; }
+  /* Keep Leaflet under modals and ensure it stretches */
+  .leaflet-container { height: 100%; z-index: 0; }
+  /* Smoother panning/zooming */
+  .leaflet-pane, .leaflet-marker-pane, .leaflet-tile-pane { will-change: transform; }
+</style>
+
+  <!-- Tailwind and your app CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/index.css" />
+
+  <!-- importmap, etc. -->
+  <script type="importmap">
+  { "imports": {
+      "leaflet": "https://aistudiocdn.com/leaflet@^1.9.4",
+      "react-leaflet": "https://aistudiocdn.com/react-leaflet@^5.0.0",
+      "qrcode.react": "https://aistudiocdn.com/qrcode.react@^4.2.0",
+      "html5-qrcode": "https://aistudiocdn.com/html5-qrcode@^2.3.8"
+    } }
+  </script>
+</head>
+
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
