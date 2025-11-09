@@ -1,30 +1,35 @@
+// frontend/components/ImpactStats.tsx
 import React from "react";
 
-export interface ImpactMetrics {
-  totalDonations: number;      // dollars
-  mealsFunded: number;         // count
-  redeemedToday: number;       // count
-}
+type Props = {
+  donated: number;
+  mealsFunded: number;
+  redeemedToday: number;
+};
 
-const ImpactStats: React.FC<{ metrics: ImpactMetrics }> = ({ metrics }) => {
-  const money = (n: number) =>
-    n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+const Stat: React.FC<{ label: string; value: string }> = ({ label, value }) => (
+  <div className="text-center">
+    <div className="text-2xl font-extrabold text-gray-900">{value}</div>
+    <div className="text-xs tracking-wide text-gray-600">{label}</div>
+  </div>
+);
 
+const ImpactStats: React.FC<Props> = ({ donated, mealsFunded, redeemedToday }) => {
   return (
-    <div className="px-4 pt-3 pb-2 grid grid-cols-3 gap-3 border-b bg-white">
-      <div className="rounded-lg bg-teal-50 p-3">
-        <div className="text-xs font-medium text-teal-700">Donated</div>
-        <div className="text-xl font-bold text-teal-800">{money(metrics.totalDonations)}</div>
+    <section aria-labelledby="impact-heading" className="mt-4">
+      <h3
+        id="impact-heading"
+        className="mb-2 text-sm font-semibold tracking-wide text-gray-900"
+      >
+        Impact stats
+      </h3>
+
+      <div className="grid grid-cols-3 gap-6 rounded-lg border border-gray-200 bg-white p-4">
+        <Stat label="DONATED" value={`$${donated.toLocaleString()}`} />
+        <Stat label="MEALS FUNDED" value={mealsFunded.toLocaleString()} />
+        <Stat label="REDEEMED TODAY" value={redeemedToday.toLocaleString()} />
       </div>
-      <div className="rounded-lg bg-indigo-50 p-3">
-        <div className="text-xs font-medium text-indigo-700">Meals Funded</div>
-        <div className="text-xl font-bold text-indigo-800">{metrics.mealsFunded.toLocaleString()}</div>
-      </div>
-      <div className="rounded-lg bg-emerald-50 p-3">
-        <div className="text-xs font-medium text-emerald-700">Redeemed Today</div>
-        <div className="text-xl font-bold text-emerald-800">{metrics.redeemedToday.toLocaleString()}</div>
-      </div>
-    </div>
+    </section>
   );
 };
 

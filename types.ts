@@ -23,6 +23,8 @@ export interface Voucher {
   status: 'issued' | 'redeemed' | 'expired';
   issuedAt: Date;
   expiresAt: Date;
+  /** Number of people covered (household size). Defaults to 1. */
+  quantity?: number; // <-- NEW
 }
 
 export interface HubApplication {
@@ -46,6 +48,7 @@ export interface Donation {
 
 export type ActivityEventType =
   | 'donation'
+  | 'voucher_issued'     // <-- NEW
   | 'voucher_redeemed'
   | 'application_submitted'
   | 'hub_approved'

@@ -11,8 +11,11 @@ import HubOnboardingView from "./frontend/components/HubOnboardingView";
 import AdminDashboard from "./frontend/components/AdminDashboard";
 import VoucherModal from "./frontend/components/VoucherModal";
 import DonateModal from "./frontend/components/DonateModal";
+import AdminLoginModal from "./frontend/components/AdminLoginModal";
+import FamilySizeModal from "./frontend/components/FamilySizeModal";
 
-import { fetchHubs, issueVoucher } from "./lib/api";
+import { fetchHubs, issueVoucher, adminMe } from "./lib/api";
+import { isAuthed, getToken, clearToken } from "./lib/auth";
 
 type View = "map" | "hubDetail" | "scanner" | "onboarding" | "admin";
 
@@ -27,7 +30,24 @@ const zipToLatLng = (addr: string): [number, number] => {
 export default function App() {
   const [view, setView] = useState<View>("map");
 
-  // ---------- Hubs ----------
+  /* ---------- Admin auth UI ---------- */
+  const [showLogin, setShowLogin] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      if (!isAuthed()) return;
+      try {
+        await adminMe(getToken() || undefined);
+        setIsAdmin(true);
+      } catch {
+        clearToken();
+        setIsAdmin(false);
+      }
+    })();
+  }, []);
+
+  /* ---------- Hubs ---------- */
   const [hubs, setHubs] = useState<Hub[]>([]);
   useEffect(() => {
     let mounted = true;
@@ -43,7 +63,7 @@ export default function App() {
     return () => { mounted = false; };
   }, []);
 
-  // ---------- Applications (persist) ----------
+  /* ---------- Applications (persist) ---------- */
   const [applications, setApplications] = useState<HubApplication[]>([]);
   useEffect(() => {
     const saved = localStorage.getItem("ck_apps");
@@ -51,7 +71,7 @@ export default function App() {
   }, []);
   useEffect(() => { localStorage.setItem("ck_apps", JSON.stringify(applications)); }, [applications]);
 
-  // ---------- Donations / Activity / Redeems ----------
+  /* ---------- Donations / Activity / Redeems ---------- */
   const [donations, setDonations] = useState<Donation[]>([]);
   const [activity, setActivity] = useState<ActivityEvent[]>([]);
   const [redeemLog, setRedeemLog] = useState<Array<{ hubId: string; createdAt: number }>>([]);
@@ -60,47 +80,53 @@ export default function App() {
     setActivity(prev => [{ id: "ACT-" + Date.now() + Math.random(), type, createdAt: Date.now(), message }, ...prev].slice(0, 80));
   }, []);
 
-  // ---------- Selection / Modals ----------
+  /* ---------- Selection / Modals ---------- */
   const [selectedHub, setSelectedHub] = useState<Hub | null>(null);
   const [activeVoucher, setActiveVoucher] = useState<Voucher | null>(null);
   const [isDonateModalOpen, setDonateModalOpen] = useState(false);
   const [donationHub, setDonationHub] = useState<Hub | null>(null);
 
+  // Family size flow
+  const [showFamilyModal, setShowFamilyModal] = useState(false);
+  const [hubForVoucher, setHubForVoucher] = useState<Hub | null>(null);
+
   const handleSelectHub = useCallback((hub: Hub) => { setSelectedHub(hub); setView("hubDetail"); }, []);
   const handleBackToMap = useCallback(() => { setSelectedHub(null); setView("map"); }, []);
   const handleOpenDonateModal = (hub: Hub | null) => { setDonationHub(hub); setDonateModalOpen(true); };
 
-  // ---------- Redeem (declare BEFORE use) ----------
+  /* ---------- Redeem (declare BEFORE use) ---------- */
   const handleRedeemVoucher = useCallback((voucherId: string) => {
     const v = activeVoucher;
     if (!v || v.id !== voucherId) return false;
 
+    const qty = Math.max(1, Number(v.quantity || 1));
+
     setHubs(prev =>
       prev.map(h =>
         h.id === v.hubId
-          ? { ...h, vouchersRemaining: Math.max(0, Number(h.vouchersRemaining || 0) - 1) }
+          ? { ...h, vouchersRemaining: Math.max(0, Number(h.vouchersRemaining || 0) - qty) }
           : h
       )
     );
 
     const hubName = hubs.find(h => h.id === v.hubId)?.name ?? "Hub";
     setRedeemLog(prev => [{ hubId: v.hubId, createdAt: Date.now() }, ...prev]);
-    logActivity("voucher_redeemed", `Voucher redeemed at ${hubName}.`);
+    logActivity("voucher_redeemed", `Voucher (${qty}) redeemed at ${hubName}.`);
     return true;
   }, [activeVoucher, hubs, logActivity]);
 
-  // ---------- Use voucher (5s mock timer) ----------
+  /* ---------- Use voucher (5s mock timer) ---------- */
   const handleUseVoucher = useCallback((voucherId: string) => {
     setTimeout(() => {
       handleRedeemVoucher(voucherId);
       setActiveVoucher(null);
       setView("map");
     }, 5000);
-    return true; // <- your VoucherModal expects boolean
+    return true;
   }, [handleRedeemVoucher]);
 
-  // ---------- Issue voucher ----------
-  const handleGetVoucher = useCallback(async (hub: Hub) => {
+  /* ---------- Issue voucher (now with quantity) ---------- */
+  const handleGetVoucher = useCallback(async (hub: Hub, quantity: number) => {
     try {
       const issued = await issueVoucher(hub.id);
       const v: Voucher = {
@@ -109,9 +135,10 @@ export default function App() {
         status: "issued",
         issuedAt: new Date(),
         expiresAt: new Date(issued?.expiresAt ?? Date.now() + 2 * 60 * 60 * 1000),
+        quantity,
       };
       setActiveVoucher(v);
-      logActivity("voucher_issued" as ActivityEvent["type"], `Voucher issued for ${hub.name}.`);
+      logActivity("voucher_issued", `Voucher issued for ${hub.name} (household ${quantity}).`);
     } catch {
       setActiveVoucher({
         id: `VOUCHER-${Date.now()}`,
@@ -119,19 +146,20 @@ export default function App() {
         status: "issued",
         issuedAt: new Date(),
         expiresAt: new Date(Date.now() + 2 * 60 * 60 * 1000),
+        quantity,
       });
-      logActivity("voucher_issued" as ActivityEvent["type"], `Voucher issued for ${hub.name}.`);
+      logActivity("voucher_issued", `Voucher issued for ${hub.name} (household ${quantity}).`);
     }
   }, [logActivity]);
 
-  // ---------- Donations ----------
+  /* ---------- Donations ---------- */
   const handleDonation = useCallback((amount: number, hub: Hub | null) => {
     setDonations(prev => [{ id: "DON-" + Date.now(), hubId: hub?.id ?? "general", amount, createdAt: Date.now() }, ...prev]);
     const msg = `Donation of ${amount.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })}${hub ? ` to ${hub.name}` : ""}.`;
-    logActivity("donation", msg as ActivityEvent["type"] & string);
+    logActivity("donation", msg);
   }, [logActivity]);
 
-  // ---------- Become-a-Hub submission ----------
+  /* ---------- Become-a-Hub submission ---------- */
   const handleSubmitApplication = useCallback((input: {
     businessName: string; address: string; phone: string; offer: string; dailyCap: number; email: string;
   }) => {
@@ -171,12 +199,12 @@ export default function App() {
     setView("map");
   }, [logActivity]);
 
-  // ---------- Metrics ----------
+  /* ---------- Metrics ---------- */
   const totalDonations = donations.reduce((s, d) => s + d.amount, 0);
   const redeemed24h = redeemLog.filter(r => (Date.now() - r.createdAt) < 24 * 60 * 60 * 1000).length;
   const mealsFunded = redeemLog.length;
 
-  // ---------- View routing ----------
+  /* ---------- View routing ---------- */
   const renderView = () => {
     switch (view) {
       case "hubDetail": {
@@ -184,11 +212,12 @@ export default function App() {
         const h = hubs.find(x => x.id === selectedHub.id) ?? selectedHub;
         return (
           <HubDetailView
-            hub={h}
-            onBack={handleBackToMap}
-            onGetVoucher={handleGetVoucher}
-            onDonate={handleOpenDonateModal}
-          />
+  hub={h}
+  onBack={handleBackToMap}
+  onGetVoucher={(hubArg) => { setHubForVoucher(hubArg || h); setShowFamilyModal(true); }}
+  onDonate={handleOpenDonateModal}
+/>
+
         );
       }
       case "scanner":
@@ -249,16 +278,37 @@ export default function App() {
         view={view}
         setView={setView}
         onOpenDonateModal={() => handleOpenDonateModal(null)}
+        isAdmin={isAdmin}
         pendingCount={applications.filter(a => a.status === "pending").length}
+        onShowLogin={() => setShowLogin(true)}
+        onLogout={() => { clearToken(); setIsAdmin(false); }}
       />
 
       <main className="flex-grow flex flex-col">{renderView()}</main>
+
+      {/* Admin Login Modal */}
+      <AdminLoginModal
+        open={showLogin}
+        onClose={() => setShowLogin(false)}
+        onLoggedIn={() => { setIsAdmin(true); setShowLogin(false); }}
+      />
+
+      {/* Family Size Modal */}
+      <FamilySizeModal
+        open={showFamilyModal}
+        onClose={() => { setShowFamilyModal(false); setHubForVoucher(null); }}
+        onSubmit={(qty) => {
+          if (hubForVoucher) handleGetVoucher(hubForVoucher, qty);
+          setShowFamilyModal(false);
+          setHubForVoucher(null);
+        }}
+      />
 
       {activeVoucher && (
         <VoucherModal
           voucher={activeVoucher}
           hub={hubs.find(h => h.id === activeVoucher.hubId) || null}
-          onUseVoucher={() => handleUseVoucher(activeVoucher.id)} // returns boolean
+          onUseVoucher={() => handleUseVoucher(activeVoucher.id)}
           onClose={() => setActiveVoucher(null)}
         />
       )}

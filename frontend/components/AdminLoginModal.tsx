@@ -1,68 +1,118 @@
-// frontend/components/AdminLoginModal.tsx
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { adminLogin } from "../../lib/api";
+import { setToken } from "../../lib/auth";
 
-interface AdminLoginModalProps {
+type Props = {
+  open: boolean;
   onClose: () => void;
-  onVerify: (code: string) => boolean | Promise<boolean>;
-}
+  onLoggedIn?: () => void;
+};
 
-const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ onClose, onVerify }) => {
-  const [code, setCode] = useState("");
-  const [busy, setBusy] = useState(false);
+const AdminLoginModal: React.FC<Props> = ({ open, onClose, onLoggedIn }) => {
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setBusy(true);
-    setError(null);
-    try {
-      const ok = await onVerify(code.trim());
-      if (ok) onClose();
-      else setError("Invalid admin code. Please try again.");
-    } finally {
-      setBusy(false);
+  // Reset & focus when opened
+  useEffect(() => {
+    if (open) {
+      setPassword("");
+      setError(null);
+      setLoading(false);
+      // Small timeout to ensure element is mounted
+      setTimeout(() => inputRef.current?.focus(), 0);
+    }
+  }, [open]);
+
+  // Submit on Enter
+  const handleKeyDown: React.KeyboardEventHandler<HTMLInputElement> = (e) => {
+    if (e.key === "Enter" && !loading && password.trim()) {
+      void doLogin();
     }
   };
 
+  const doLogin = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      const resp = await adminLogin((password || "").trim());
+      if (resp?.ok && resp?.token) {
+        setToken(resp.token);
+        onLoggedIn?.();
+        onClose();
+        return;
+      }
+      setError("Login failed. Please verify the password and try again.");
+    } catch (e: any) {
+      // 401 → wrong password, 404 → likely bad API base URL
+      if (e?.message === "401") setError("Incorrect password.");
+      else if (e?.message === "404")
+        setError("Login endpoint not found. Check VITE_API_BASE_URL.");
+      else setError("Server error. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!open) return null;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/40" />
-      <div className="relative w-full max-w-md mx-4 rounded-xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-start justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">Admin Login</h2>
-          <button onClick={onClose} aria-label="Close" className="p-2 rounded hover:bg-gray-100">
-            <svg className="h-5 w-5 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/>
-            </svg>
-          </button>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      role="dialog"
+      aria-modal="true"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-sm rounded-xl bg-white shadow-xl ring-1 ring-black/5"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="border-b px-5 py-4">
+          <h2 className="text-lg font-semibold">Admin Login</h2>
+          <p className="mt-1 text-sm text-gray-500">
+            Enter the admin password to access the dashboard.
+          </p>
         </div>
 
-        <p className="text-sm text-gray-600 mb-4">
-          Enter the admin passcode to access the dashboard.
-        </p>
+        <div className="px-5 py-4 space-y-3">
+          <label className="block text-sm font-medium text-gray-700">
+            Password
+          </label>
+          <input
+            ref={inputRef}
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Enter password"
+            className="w-full rounded-md border border-gray-300 px-3 py-2 outline-none focus:border-teal-600 focus:ring-1 focus:ring-teal-600"
+          />
+          {error && (
+            <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+              {error}
+            </div>
+          )}
+        </div>
 
-        <form onSubmit={submit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Admin code</label>
-            <input
-              type="password"
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              className="w-full rounded border-gray-300 focus:ring-teal-500 focus:border-teal-500"
-              placeholder="••••••••"
-              autoFocus
-            />
-            {error && <div className="mt-2 text-sm text-red-600">{error}</div>}
-          </div>
-
+        <div className="flex items-center justify-end gap-2 px-5 py-4 border-t">
           <button
-            disabled={busy || !code}
-            type="submit"
-            className="w-full py-2.5 rounded-md bg-teal-600 text-white font-semibold hover:bg-teal-700 disabled:opacity-60"
+            type="button"
+            className="rounded border border-gray-300 bg-white px-4 py-2 text-sm hover:bg-gray-50"
+            onClick={onClose}
+            disabled={loading}
           >
-            {busy ? "Verifying…" : "Login"}
+            Cancel
           </button>
-        </form>
+          <button
+            type="button"
+            onClick={doLogin}
+            disabled={!password.trim() || loading}
+            className="rounded bg-green-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 hover:bg-green-700"
+          >
+            {loading ? "Signing in..." : "Log in"}
+          </button>
+        </div>
       </div>
     </div>
   );
