@@ -1,6 +1,6 @@
 import React from "react";
 import HubCard from "./HubCard";
-import type { Hub } from "../../types";
+import type { Hub } from "../types";
 
 interface Props {
   hubs: Hub[];

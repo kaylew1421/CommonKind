@@ -1,6 +1,6 @@
 // frontend/components/AdminDashboard.tsx
 import React, { useMemo, useState } from 'react';
-import type { Hub, HubApplication, ActivityEvent } from '../../types';
+import type { Hub, HubApplication, ActivityEvent } from '../types';
 
 function money(n: number) {
   return n.toLocaleString(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });

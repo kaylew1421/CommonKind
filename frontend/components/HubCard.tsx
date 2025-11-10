@@ -1,5 +1,5 @@
 import React from "react";
-import { Hub } from "../../types";
+import { Hub } from "../types";
 
 interface HubCardProps {
   hub: Hub;

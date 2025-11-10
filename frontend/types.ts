@@ -1,4 +1,5 @@
 // types.ts
+
 export type RequirementItem = string | { label: string; optional?: boolean };
 
 export interface Hub {
@@ -11,7 +12,7 @@ export interface Hub {
   offer: string;
   dailyCap: number;
   vouchersRemaining: number;
-  type: 'Restaurant' | 'Grocery' | 'Church' | 'Library';
+  type: "Restaurant" | "Grocery" | "Church" | "Library";
   phone: string;
   requirements?: RequirementItem[];
   selfAttestation?: boolean;
@@ -20,11 +21,11 @@ export interface Hub {
 export interface Voucher {
   id: string;
   hubId: string;
-  status: 'issued' | 'redeemed' | 'expired';
+  status: "issued" | "redeemed" | "expired";
   issuedAt: Date;
   expiresAt: Date;
   /** Number of people covered (household size). Defaults to 1. */
-  quantity?: number; // <-- NEW
+  quantity?: number;
 }
 
 export interface HubApplication {
@@ -36,7 +37,7 @@ export interface HubApplication {
   dailyCap: number;
   email: string;
   createdAt: string; // ISO
-  status: 'pending' | 'approved' | 'rejected';
+  status: "pending" | "approved" | "rejected";
 }
 
 export interface Donation {
@@ -47,16 +48,16 @@ export interface Donation {
 }
 
 export type ActivityEventType =
-  | 'donation'
-  | 'voucher_issued'     // <-- NEW
-  | 'voucher_redeemed'
-  | 'application_submitted'
-  | 'hub_approved'
-  | 'hub_created'
-  | 'hub_updated'
-  | 'hub_deleted'
-  | 'fraud_flag'
-  | 'fraud_resolved';
+  | "donation"
+  | "voucher_issued"
+  | "voucher_redeemed"
+  | "application_submitted"
+  | "hub_approved"
+  | "hub_created"
+  | "hub_updated"
+  | "hub_deleted"
+  | "fraud_flag"
+  | "fraud_resolved";
 
 export interface ActivityEvent {
   id: string;
@@ -69,8 +70,18 @@ export interface FraudFlag {
   id: string;
   hubId: string;
   hubName: string;
-  title: string;     // e.g., "High redemption velocity"
-  details?: string;  // optional text
-  status: 'open' | 'resolved';
+  title: string; // e.g., "High redemption velocity"
+  details?: string;
+  status: "open" | "resolved";
   createdAt: number;
+}
+
+/** App-wide small metrics object (matches SearchControl expectations). */
+export interface Metrics {
+  totalDonations: number;
+  mealsFunded: number;
+  /** redemptions counted “today” for the user’s local day */
+  redeemedToday: number;
+  /** rolling last-24-hours count (required by SearchControl) */
+  redeemed24h: number;
 }

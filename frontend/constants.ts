@@ -1,5 +1,5 @@
 // constants.ts  (adds requirements so cards + detail can show them)
-import { Hub } from './types';
+import { Hub } from './frontend/types';
 
 export const HUB_TYPES: Hub['type'][] = ['Restaurant', 'Grocery', 'Church', 'Library'];
 

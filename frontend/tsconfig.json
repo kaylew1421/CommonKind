@@ -9,13 +9,14 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "types": ["vite/client", "node"],
+
     "baseUrl": ".",
     "paths": { "@/*": ["./*"] },
     "allowJs": true,
     "useDefineForClassFields": false,
     "noEmit": true
   },
-  "include": ["**/*.ts", "**/*.tsx", "vite-env.d.ts"],
+  "include": ["**/*.ts", "**/*.tsx", "frontend/vite-env.d.ts"],
   "exclude": ["node_modules", "dist"]
 }
+

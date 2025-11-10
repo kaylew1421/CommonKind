@@ -1,6 +1,6 @@
 // frontend/components/AdminView.tsx
 import React, { useMemo, useState } from 'react';
-import type { HubApplication, Hub } from '../../types';
+import type { HubApplication, Hub } from '../types';
 
 type Props = {
   applications: HubApplication[];

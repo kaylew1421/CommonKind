@@ -1,5 +1,5 @@
 import React from "react";
-import type { Hub } from "../../types";
+import type { Hub } from "../types";
 
 interface Props {
   hub: Hub;
